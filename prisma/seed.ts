@@ -93,7 +93,9 @@ async function main() {
     update: {},
   });
 
-  if (process.env.NODE_ENV !== "production" && process.env.SEED_DEMO !== "false") {
+  // Demo accounts: always in development; in production only when SEED_DEMO=true (test deployments).
+  const seedDemo = process.env.SEED_DEMO === "true" || (process.env.NODE_ENV !== "production" && process.env.SEED_DEMO !== "false");
+  if (seedDemo) {
     const pw = await bcrypt.hash("Password123!", 12);
     await db.user.upsert({
       where: { email: "customer@redline.local" },

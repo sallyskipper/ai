@@ -24,6 +24,24 @@ Dev accounts (created only when `NODE_ENV !== "production"`):
 
 The seed creates **no reviews or ratings**. All ratings, completion rates and stats are computed from real orders.
 
+## Test deployment (Vercel + Neon)
+
+1. Create a free Postgres database at [neon.tech](https://neon.tech) and copy its connection string.
+2. At [vercel.com](https://vercel.com), import this GitHub repo and choose the `claude/bold-newton-ue8kdj` branch. Vercel runs `vercel-build`, which migrates the database, runs the seed, then builds the site.
+3. Add these environment variables before the first deploy:
+
+| Variable | Value |
+| --- | --- |
+| `DATABASE_URL` | the Neon connection string |
+| `APP_URL` | your Vercel URL, e.g. `https://redline-xyz.vercel.app` |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | your admin login |
+| `PAYMENTS_PROVIDER` | `sandbox` |
+| `ALLOW_SANDBOX_IN_PRODUCTION` | `true` (test sites only — fake payments) |
+| `SEED_DEMO` | `true` (creates the demo customer and provider) |
+| `UPLOAD_DIR` | `/tmp/attachments` |
+
+Before going live, switch to `PAYMENTS_PROVIDER=stripe` with Stripe keys, remove `ALLOW_SANDBOX_IN_PRODUCTION` and `SEED_DEMO`, and move attachments to object storage.
+
 ## Tests
 
 ```bash

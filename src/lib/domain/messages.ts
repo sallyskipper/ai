@@ -6,7 +6,8 @@ import { UserError } from "@/lib/errors";
 import { notify } from "@/lib/notify";
 import type { ActorRef } from "./transition";
 
-export const UPLOAD_DIR = path.join(process.cwd(), "storage", "attachments");
+// Override with UPLOAD_DIR on hosts with a read-only app directory (e.g. /tmp/attachments on Vercel).
+export const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), "storage", "attachments");
 export const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 export const ALLOWED_MIME = ["image/png", "image/jpeg", "image/webp", "image/gif", "application/pdf", "text/plain"];
 
