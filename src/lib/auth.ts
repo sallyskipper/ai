@@ -78,3 +78,9 @@ export async function requireRole(...roles: Role[]): Promise<Viewer> {
   if (!roles.includes(v.role)) redirect("/dashboard");
   return v;
 }
+
+/** Signs out every session of the user except the current one. */
+export async function revokeOtherSessions(userId: string) {
+  const token = (await cookies()).get(COOKIE)?.value;
+  await db.session.deleteMany({ where: { userId, ...(token ? { tokenHash: { not: hashToken(token) } } : {}) } });
+}
