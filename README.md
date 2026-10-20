@@ -61,7 +61,7 @@ prisma/                Schema, migrations, seed
 
 ### Minimum prices
 
-Admins configure rules per service (`/admin/pricing`): per-division rates by rank tier (Solo/Duo), per-game rates (Duo), and hourly rates by coaching type, plus a per-service floor. The minimum is shown live while creating an order, recomputed and **stored on the order** at creation (`minPriceCents` + `pricingSnapshot`), and enforced on the server for every offer.
+Admins configure rules per service (`/admin/pricing`): per-division rates by rank tier (Solo/Duo), per-game rates (Duo), and hourly rates by coaching type, plus a per-service floor. Rank-up services are priced one division at a time from a ladder (`src/lib/rank-ladder.ts`): for example Iron 1 → Iron 2 is $6, Silver 3 → Gold 1 is $12, Ascendant 1 → Ascendant 2 is $25, Immortal 1 → Immortal 2 is $70 and Immortal 3 → Radiant is $150. A single-division rule overrides its whole-tier rule, and every step is editable in admin. The minimum is shown live while creating an order, recomputed and **stored on the order** at creation (`minPriceCents` + `pricingSnapshot`), and enforced on the server for every offer.
 
 ## Payments
 

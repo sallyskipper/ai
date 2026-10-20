@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { exampleMinimums, isBookable } from "@/lib/catalog";
 import { formatCents } from "@/lib/money";
 import { listApprovedProviders } from "@/lib/providers-query";
-import { COACHING_TYPES } from "@/lib/valorant";
+import { COACHING_TYPES, ruleScopeLabel } from "@/lib/valorant";
 import { ProviderCard } from "@/components/provider-card";
 import { Card, CardHeader, EmptyState, LinkButton, Notice, ServiceBadge } from "@/components/ui";
 
@@ -105,7 +105,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
               {service.pricingRules.map((r) => (
                 <li key={r.id} className="flex justify-between px-5 py-2">
                   <span className="text-muted">
-                    {r.tier ?? "Any rank"}
+                    {ruleScopeLabel(r.tier)}
                     {r.variant ? ` · ${COACHING_TYPES.find((c) => c.code === r.variant)?.name ?? r.variant}` : ""}
                   </span>
                   <span className="tabular-nums">

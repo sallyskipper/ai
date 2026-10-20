@@ -6,7 +6,7 @@ import { UserError } from "@/lib/errors";
 import { audit } from "@/lib/audit";
 import { parseDollars } from "@/lib/money";
 import { COMMISSION_MAX_BPS, COMMISSION_MIN_BPS, COMMISSION_TIERS, SETTING_DEFAULTS, type SettingKey } from "@/lib/settings";
-import { TIERS } from "@/lib/valorant";
+import { RANKS, TIERS } from "@/lib/valorant";
 import { reviewApplication, setProviderStatus } from "@/lib/domain/providers";
 import { moderateReview } from "@/lib/domain/reviews";
 import { cancelOrder, resolveDisputeRelease } from "@/lib/domain/orders";
@@ -77,7 +77,7 @@ export async function savePricingRuleAction(fd: FormData) {
         const unit = str(fd, "unit");
         if (!["DIVISION", "GAME", "HOUR"].includes(unit)) throw new UserError("Invalid unit");
         const tier = str(fd, "tier") || null;
-        if (tier && !(TIERS as readonly string[]).includes(tier)) throw new UserError("Invalid tier");
+        if (tier && !(TIERS as readonly string[]).includes(tier) && !RANKS.includes(tier)) throw new UserError("Invalid rank or tier");
         const rule = await tx.pricingRule.create({
           data: { serviceId: str(fd, "serviceId"), unit: unit as "DIVISION", tier, variant: str(fd, "variant") || null, amountCents },
         });

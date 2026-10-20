@@ -72,3 +72,33 @@ describe("commission tiers", async () => {
     expect(tierKeyFor(15000)).toBe("commissionLargeBps");
   });
 });
+
+describe("per-division ladder", () => {
+  const ladder: Rule[] = [
+    { id: "tier-asc", unit: "DIVISION", tier: "Ascendant", variant: null, amountCents: 9999 },
+    { id: "a1", unit: "DIVISION", tier: "Ascendant 1", variant: null, amountCents: 2500 },
+    { id: "a2", unit: "DIVISION", tier: "Ascendant 2", variant: null, amountCents: 2750 },
+    { id: "a3", unit: "DIVISION", tier: "Ascendant 3", variant: null, amountCents: 4000 },
+    { id: "i1", unit: "DIVISION", tier: "Immortal 1", variant: null, amountCents: 7000 },
+  ];
+  const solo = (from: string, to: string) =>
+    computeMinPrice("SOLO_RANK_UP", { currentRank: from, desiredRank: to, queue: "Competitive", preferences: [], timeframeDays: 7 }, ladder, 600);
+
+  it("prices each division step by its own rule, overriding the tier rule", () => {
+    expect(solo("Ascendant 1", "Ascendant 2").minPriceCents).toBe(2500);
+    expect(solo("Immortal 1", "Immortal 2").minPriceCents).toBe(7000);
+    const r = solo("Ascendant 1", "Immortal 2");
+    expect(r.minPriceCents).toBe(2500 + 2750 + 4000 + 7000);
+    expect(r.lines.map((l) => l.label)).toEqual([
+      "Ascendant 1 → Ascendant 2",
+      "Ascendant 2 → Ascendant 3",
+      "Ascendant 3 → Immortal 1",
+      "Immortal 1 → Immortal 2",
+    ]);
+  });
+
+  it("falls back to the tier rule when a division has no rule of its own", () => {
+    const partial = ladder.filter((r) => r.id !== "a2");
+    expect(computeMinPrice("SOLO_RANK_UP", { currentRank: "Ascendant 2", desiredRank: "Ascendant 3", queue: "Competitive", preferences: [], timeframeDays: 7 }, partial, 0).minPriceCents).toBe(9999);
+  });
+});

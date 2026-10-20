@@ -40,17 +40,21 @@ function divisionLines(rules: Rule[], from: string, to: string): PriceLine[] {
   const start = rankIndex(from);
   const end = rankIndex(to);
   if (start < 0 || end < 0 || end <= start) throw new PricingError("Invalid rank progression");
-  // Group consecutive steps by the tier they start in.
-  const byTier = new Map<string, number>();
+  // Each step is priced by the rank it starts from: a rule for that exact
+  // division (e.g. "Ascendant 1") wins over a rule for the whole tier.
+  // Consecutive steps priced by the same rule are grouped into one line.
+  const lines: PriceLine[] = [];
   for (let i = start; i < end; i++) {
-    const tier = tierOf(RANKS[i]);
-    byTier.set(tier, (byTier.get(tier) ?? 0) + 1);
+    const rank = RANKS[i];
+    const tier = tierOf(rank);
+    const exact = rules.find((r) => r.unit === "DIVISION" && r.tier === rank && r.variant === null);
+    const rule = exact ?? findRule(rules, "DIVISION", tier, null);
+    if (!rule) throw new PricingError(`No price configured for ${rank}`);
+    const last = lines.at(-1);
+    if (last && last.ruleId === rule.id) last.quantity += 1;
+    else lines.push({ label: exact ? `${rank} → ${RANKS[i + 1]}` : `${tier} divisions`, quantity: 1, unitCents: rule.amountCents, ruleId: rule.id });
   }
-  return [...byTier.entries()].map(([tier, qty]) => {
-    const rule = findRule(rules, "DIVISION", tier, null);
-    if (!rule) throw new PricingError(`No price configured for ${tier} divisions`);
-    return { label: `${tier} divisions`, quantity: qty, unitCents: rule.amountCents, ruleId: rule.id };
-  });
+  return lines;
 }
 
 export function computeMinPrice(

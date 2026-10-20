@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/money";
-import { COACHING_TYPES, TIERS } from "@/lib/valorant";
+import { COACHING_TYPES, RANKS, TIERS, ruleScopeLabel } from "@/lib/valorant";
 import { savePricingRuleAction, togglePricingRuleAction } from "@/actions/admin";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Badge, Card, CardHeader, Notice, PageHeader, ServiceBadge, fmtDate } from "@/components/ui";
@@ -13,14 +13,14 @@ const UNITS_FOR = { SOLO_RANK_UP: ["DIVISION"], DUO_RANK_UP: ["DIVISION", "GAME"
 export default async function PricingPage() {
   const services = await db.service.findMany({
     orderBy: { sortOrder: "asc" },
-    include: { pricingRules: { orderBy: [{ unit: "asc" }, { amountCents: "asc" }] } },
+    include: { pricingRules: { orderBy: [{ active: "desc" }, { unit: "asc" }, { amountCents: "asc" }] } },
   });
   return (
     <>
       <PageHeader title="Minimum prices" subtitle="Configure minimum accepted prices separately for Solo Rank Up, Duo Rank Up and Coaching." />
       <div className="mb-6">
         <Notice tone="info">
-          An order&apos;s minimum = sum of matching rules (by rank tier, unit and coaching type), never below the service floor. The minimum is snapshotted on each order at creation, so changes here only apply to new orders. Every change is written to the audit log.
+          An order&apos;s minimum = sum of matching rules, never below the service floor. Rank-up orders are priced one division at a time; a single-division rule (e.g. Ascendant 1 → Ascendant 2) overrides its whole-tier rule. The minimum is snapshotted on each order at creation, so changes here only apply to new orders. Every change is written to the audit log.
         </Notice>
       </div>
       <div className="space-y-6">
@@ -34,7 +34,7 @@ export default async function PricingPage() {
                   {s.pricingRules.map((r) => (
                     <tr key={r.id} className={r.active ? "" : "opacity-50"}>
                       <td>{UNIT_LABEL[r.unit]}</td>
-                      <td>{r.tier ?? <span className="text-faint">Any</span>}</td>
+                      <td>{r.tier ? ruleScopeLabel(r.tier) : <span className="text-faint">Any</span>}</td>
                       <td>{r.variant ? COACHING_TYPES.find((c) => c.code === r.variant)?.name : <span className="text-faint">Any</span>}</td>
                       <td>
                         <ActionForm action={savePricingRuleAction} className="flex items-center gap-2">
@@ -61,8 +61,16 @@ export default async function PricingPage() {
                 <select name="unit" className="input">{UNITS_FOR[s.kind].map((u) => <option key={u} value={u}>{UNIT_LABEL[u]}</option>)}</select>
               </div>
               <div>
-                <label className="label">Tier</label>
-                <select name="tier" className="input"><option value="">Any</option>{TIERS.map((t) => <option key={t}>{t}</option>)}</select>
+                <label className="label">Rank</label>
+                <select name="tier" className="input">
+                  <option value="">Any</option>
+                  <optgroup label="Whole tier">{TIERS.map((t) => <option key={t}>{t}</option>)}</optgroup>
+                  {s.kind !== "COACHING" && (
+                    <optgroup label="Single division (overrides tier)">
+                      {RANKS.slice(0, -1).map((r) => <option key={r} value={r}>{ruleScopeLabel(r)}</option>)}
+                    </optgroup>
+                  )}
+                </select>
               </div>
               {s.kind === "COACHING" && (
                 <div>

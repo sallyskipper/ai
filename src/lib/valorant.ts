@@ -38,6 +38,13 @@ export function isRank(rank: unknown): rank is string {
   return typeof rank === "string" && RANKS.includes(rank);
 }
 
+/** How a pricing rule's tier column reads: "Ascendant 1 → Ascendant 2" for a single division, else the tier. */
+export function ruleScopeLabel(tier: string | null): string {
+  if (!tier) return "Any rank";
+  const i = RANKS.indexOf(tier);
+  return i >= 0 && i < RANKS.length - 1 && tier !== "Radiant" ? `${tier} → ${RANKS[i + 1]}` : tier;
+}
+
 export function tierOf(rank: string): Tier {
   const t = rank.split(" ")[0] as Tier;
   if (!TIERS.includes(t)) throw new Error(`Unknown rank ${rank}`);

@@ -2,15 +2,10 @@
 // production and are clearly named as demo accounts; no reviews or ratings are seeded.
 import { PrismaClient, type PricingUnit } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { RANK_LADDER_CENTS, RANK_UP_FLOOR_CENTS } from "../src/lib/rank-ladder";
 
 const db = new PrismaClient();
 
-const SOLO_DIVISION: Record<string, number> = {
-  Iron: 500, Bronze: 600, Silver: 800, Gold: 1000, Platinum: 1400, Diamond: 2000, Ascendant: 3000, Immortal: 5000,
-};
-const DUO_DIVISION: Record<string, number> = {
-  Iron: 700, Bronze: 850, Silver: 1100, Gold: 1400, Platinum: 1900, Diamond: 2800, Ascendant: 4200, Immortal: 7000,
-};
 const DUO_GAME: Record<string, number> = {
   Iron: 300, Bronze: 350, Silver: 400, Gold: 500, Platinum: 650, Diamond: 900, Ascendant: 1200, Immortal: 1800, Radiant: 2500,
 };
@@ -33,7 +28,7 @@ async function main() {
       rules: "Solo service. Never share your password through Redline or any third party.",
       accountOperated: true,
       enabled: false,
-      floorPriceCents: 1500,
+      floorPriceCents: RANK_UP_FLOOR_CENTS,
       sortOrder: 0,
     },
     {
@@ -47,7 +42,7 @@ async function main() {
         "You play on your own account at all times. Providers never request or receive account credentials. Party rank restrictions set by the game apply.",
       accountOperated: false,
       enabled: true,
-      floorPriceCents: 1500,
+      floorPriceCents: RANK_UP_FLOOR_CENTS,
       sortOrder: 1,
     },
     {
@@ -74,10 +69,10 @@ async function main() {
     const existing = await db.pricingRule.count({ where: { serviceId: svc.id } });
     if (existing) continue;
     const rules: { unit: PricingUnit; tier: string | null; variant: string | null; amountCents: number }[] = [];
-    if (s.kind === "SOLO_RANK_UP")
-      for (const [tier, c] of Object.entries(SOLO_DIVISION)) rules.push({ unit: "DIVISION", tier, variant: null, amountCents: c });
+    // Rank-up services get one rule per division step (the per-rank ladder).
+    if (s.kind === "SOLO_RANK_UP" || s.kind === "DUO_RANK_UP")
+      for (const [rank, c] of Object.entries(RANK_LADDER_CENTS)) rules.push({ unit: "DIVISION", tier: rank, variant: null, amountCents: c });
     if (s.kind === "DUO_RANK_UP") {
-      for (const [tier, c] of Object.entries(DUO_DIVISION)) rules.push({ unit: "DIVISION", tier, variant: null, amountCents: c });
       for (const [tier, c] of Object.entries(DUO_GAME)) rules.push({ unit: "GAME", tier, variant: null, amountCents: c });
     }
     if (s.kind === "COACHING") {
