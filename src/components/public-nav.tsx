@@ -1,17 +1,18 @@
 import Link from "next/link";
 import { getViewer } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { isBookable } from "@/lib/catalog";
 import { logoutAction } from "@/actions/auth";
 import { Avatar, Badge, LinkButton, Logo } from "./ui";
 
 export async function PublicNav() {
   const viewer = await getViewer();
   const unread = viewer ? await db.notification.count({ where: { userId: viewer.id, readAt: null } }) : 0;
+  // Service links follow the catalog order (Solo, Duo, Coaching); "Soon" shows only while a service isn't bookable.
+  const services = await db.service.findMany({ where: { game: { slug: "valorant" } }, orderBy: { sortOrder: "asc" } });
   const links = [
-    { href: "/services/valorant-duo-rank-up", label: "Duo Rank Up" },
-    { href: "/services/valorant-coaching", label: "Coaching" },
-    { href: "/services/valorant-solo-rank-up", label: "Solo Rank Up", soon: true },
-    { href: "/providers", label: "Providers" },
+    ...services.map((s) => ({ href: `/services/${s.slug}`, label: s.name, soon: !isBookable(s) })),
+    { href: "/providers", label: "Providers", soon: false },
   ];
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-ink/85 backdrop-blur-md">
@@ -80,9 +81,9 @@ export function Footer() {
         <div>
           <p className="label">Services</p>
           <ul className="space-y-2 text-sm text-muted">
+            <li><Link className="hover:text-text" href="/services/valorant-solo-rank-up">Solo Rank Up</Link></li>
             <li><Link className="hover:text-text" href="/services/valorant-duo-rank-up">Duo Rank Up</Link></li>
             <li><Link className="hover:text-text" href="/services/valorant-coaching">Coaching</Link></li>
-            <li><Link className="hover:text-text" href="/services/valorant-solo-rank-up">Solo Rank Up</Link></li>
           </ul>
         </div>
         <div>

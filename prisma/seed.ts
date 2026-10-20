@@ -27,11 +27,10 @@ async function main() {
       slug: "valorant-solo-rank-up",
       kind: "SOLO_RANK_UP" as const,
       name: "Solo Rank Up",
-      tagline: "A vetted provider completes your rank progression.",
+      tagline: "Solo rank up with an approved provider.",
       description:
-        "Request a rank progression completed by an approved provider. This is an account-operated service and remains disabled until it passes publisher and payment-provider compliance review.",
-      rules:
-        "Account-operated service. Never share your password through Redline or any third party. Disabled pending compliance review.",
+        "Solo rank up. Set your current and desired rank, region, queue and timeframe, then choose from offers at or above the minimum price.",
+      rules: "Solo service. Never share your password through Redline or any third party.",
       accountOperated: true,
       enabled: false,
       floorPriceCents: 1500,

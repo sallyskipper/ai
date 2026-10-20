@@ -12,7 +12,7 @@ import { Spinner } from "./forms";
 type Svc = { slug: string; kind: "SOLO_RANK_UP" | "DUO_RANK_UP" | "COACHING"; name: string; tagline: string; rules: string; bookable: boolean; floorPriceCents: number };
 
 const KIND_COPY = {
-  SOLO_RANK_UP: "A provider completes the progression. Account-operated.",
+  SOLO_RANK_UP: "Solo rank up with an approved provider.",
   DUO_RANK_UP: "You play on your own account with a provider in your party.",
   COACHING: "Improve your own gameplay with an experienced coach.",
 };
