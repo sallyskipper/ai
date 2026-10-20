@@ -276,7 +276,7 @@ export function OrderForm({ services, initialSlug, defaultRegion }: { services: 
               <ul className="mt-3 space-y-1 border-t border-line pt-3 text-xs text-muted">
                 {quote.lines.map((l) => (
                   <li key={l.label} className="flex justify-between">
-                    <span>{l.label} × {l.quantity}</span>
+                    <span>{l.label}{l.quantity !== 1 && ` × ${l.quantity}`}</span>
                     <span className="tabular-nums">{formatCents(l.quantity * l.unitCents)}</span>
                   </li>
                 ))}

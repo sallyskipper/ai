@@ -1,0 +1,30 @@
+   ▲ Next.js 15.5.28
+   - Local:        http://localhost:3000
+   - Network:      http://192.0.2.2:3000
+   - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 2.3s
+ ○ Compiling / ...
+ ✓ Compiled / in 3.9s (776 modules)
+ GET / 200 in 5372ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 2.1s (796 modules)
+ GET /login 200 in 2554ms
+ ✓ Compiled /favicon.ico in 360ms (563 modules)
+ GET /favicon.ico 200 in 549ms
+ ✓ Compiled /middleware in 342ms (115 modules)
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 1322ms (1035 modules)
+<claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
+ GET /dashboard 200 in 2064ms
+ POST /login 303 in 3156ms
+ ○ Compiling /dashboard/orders/new ...
+ ✓ Compiled /dashboard/orders/new in 1498ms (1462 modules)
+ GET /favicon.ico 200 in 1904ms
+ GET /dashboard/orders/new?service=valorant-duo-rank-up 200 in 2629ms
+ GET /favicon.ico 200 in 25ms
+<claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
+ POST /dashboard/orders/new?service=valorant-duo-rank-up 200 in 258ms
+ POST /dashboard/orders/new?service=valorant-duo-rank-up 200 in 78ms
+ ✓ Compiled in 643ms (1476 modules)

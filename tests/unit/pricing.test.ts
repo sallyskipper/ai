@@ -102,3 +102,19 @@ describe("per-division ladder", () => {
     expect(computeMinPrice("SOLO_RANK_UP", { currentRank: "Ascendant 2", desiredRank: "Ascendant 3", queue: "Competitive", preferences: [], timeframeDays: 7 }, partial, 0).minPriceCents).toBe(9999);
   });
 });
+
+describe("default rank ladder", async () => {
+  const { RANK_LADDER_CENTS } = await import("@/lib/rank-ladder");
+  const rules: Rule[] = Object.entries(RANK_LADDER_CENTS).map(([rank, c]) => ({ id: rank, unit: "DIVISION", tier: rank, variant: null, amountCents: c }));
+  const price = (from: string, to: string) =>
+    computeMinPrice("SOLO_RANK_UP", { currentRank: from, desiredRank: to, queue: "Competitive", preferences: [], timeframeDays: 7 }, rules, 600).minPriceCents;
+
+  it("charges the same per division within a tier and stacks across divisions", () => {
+    expect(price("Iron 1", "Iron 2")).toBe(600);
+    expect(price("Iron 1", "Bronze 1")).toBe(1800); // 3 × $6
+    expect(price("Ascendant 1", "Ascendant 2")).toBe(2500);
+    expect(price("Ascendant 1", "Immortal 1")).toBe(7500); // 3 × $25
+    expect(price("Immortal 1", "Immortal 2")).toBe(7000);
+    expect(price("Ascendant 3", "Immortal 2")).toBe(2500 + 7000);
+  });
+});

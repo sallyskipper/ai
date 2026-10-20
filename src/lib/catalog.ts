@@ -33,8 +33,9 @@ export function exampleMinimums(s: SvcWithRules): { label: string; cents: number
   const key = s.kind === "SOLO_RANK_UP" ? "desiredRank" : "targetRank";
   const base = s.kind === "SOLO_RANK_UP" ? { queue: "Competitive", preferences: [], timeframeDays: 7 } : { mode: "TARGET_RANK", server: "-", schedule: "-", communication: ["Discord voice"] };
   return [
-    tryPrice("Silver 3 → Gold 1", { ...base, currentRank: "Silver 3", [key]: "Gold 1" } as never),
-    tryPrice("Gold 1 → Platinum 1", { ...base, currentRank: "Gold 1", [key]: "Platinum 1" } as never),
-    tryPrice("Diamond 1 → Ascendant 1", { ...base, currentRank: "Diamond 1", [key]: "Ascendant 1" } as never),
+    tryPrice("Iron 1 → Iron 2 (1 division)", { ...base, currentRank: "Iron 1", [key]: "Iron 2" } as never),
+    tryPrice("Silver 1 → Gold 1 (3 divisions)", { ...base, currentRank: "Silver 1", [key]: "Gold 1" } as never),
+    tryPrice("Ascendant 1 → Immortal 1 (3 divisions)", { ...base, currentRank: "Ascendant 1", [key]: "Immortal 1" } as never),
+    tryPrice("Immortal 1 → Immortal 2 (1 division)", { ...base, currentRank: "Immortal 1", [key]: "Immortal 2" } as never),
   ];
 }
