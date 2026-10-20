@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 // End-to-end smoke test of the full order lifecycle through the UI.
 // Requires a running app (npm run dev) seeded with demo accounts and PAYMENTS_PROVIDER=sandbox.
 // Usage: npm run test:e2e   (set CHROMIUM_PATH if Playwright browsers are not installed)
