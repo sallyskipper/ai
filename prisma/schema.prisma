@@ -1,0 +1,598 @@
+// Redline marketplace schema.
+// Money is always stored as integer cents. Prices that form part of a commitment
+// (minimum price, agreed price, commission) are snapshotted onto the order so later
+// configuration changes never silently alter existing orders.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────── Users & auth ─────────────────────────────
+
+enum Role {
+  CUSTOMER
+  PROVIDER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  displayName  String
+  role         Role       @default(CUSTOMER)
+  status       UserStatus @default(ACTIVE)
+  avatarColor  String     @default("#E50914")
+  region       String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  sessions             Session[]
+  providerProfile      ProviderProfile?
+  providerApplications ProviderApplication[]
+  ordersAsCustomer     Order[]               @relation("CustomerOrders")
+  ordersAsProvider     Order[]               @relation("ProviderOrders")
+  offers               Offer[]
+  messages             Message[]
+  notifications        Notification[]
+  reviewsWritten       Review[]              @relation("ReviewAuthor")
+  reviewsReceived      Review[]              @relation("ReviewProvider")
+  ledgerEntries        LedgerEntry[]
+  payouts              Payout[]
+  favorites            Favorite[]            @relation("FavoriteOwner")
+  favoritedBy          Favorite[]            @relation("FavoriteProvider")
+  auditLogs            AuditLog[]
+  supportTickets       SupportTicket[]
+  disputesOpened       Dispute[]             @relation("DisputeOpener")
+  conversationReads    ConversationRead[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ───────────────────────────── Providers ─────────────────────────────
+
+enum ProviderStatus {
+  PENDING // applied, awaiting review
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+model ProviderProfile {
+  id                 String         @id @default(cuid())
+  userId             String         @unique
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status             ProviderStatus @default(PENDING)
+  bio                String         @default("")
+  qualifications     String         @default("")
+  coachingStyle      String         @default("")
+  // Ranks are self-declared until an admin sets rankVerified.
+  currentRank        String?
+  peakRank           String?
+  rankVerified       Boolean        @default(false)
+  regions            String[]
+  supportedServices  String[] // service slugs
+  coachingSpecialties String[]
+  agents             String[]
+  availability       String         @default("")
+  languages          String[]
+  // Stripe Connect account used for payouts (marketplace flow).
+  stripeAccountId    String?        @unique
+  payoutsEnabled     Boolean        @default(false)
+  approvedAt         DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+model ProviderApplication {
+  id             String            @id @default(cuid())
+  userId         String
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status         ApplicationStatus @default(SUBMITTED)
+  riotId         String
+  currentRank    String
+  peakRank       String
+  regions        String[]
+  services       String[]
+  experience     String
+  trackerUrl     String?
+  discordHandle  String?
+  agreedToRules  Boolean
+  reviewNote     String?
+  reviewedById   String?
+  reviewedAt     DateTime?
+  createdAt      DateTime          @default(now())
+
+  @@index([status])
+}
+
+model Favorite {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation("FavoriteOwner", fields: [userId], references: [id], onDelete: Cascade)
+  providerId String
+  provider   User     @relation("FavoriteProvider", fields: [providerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, providerId])
+}
+
+// ───────────────────────────── Catalog & pricing ─────────────────────────────
+
+enum ServiceKind {
+  SOLO_RANK_UP
+  DUO_RANK_UP
+  COACHING
+}
+
+model Game {
+  id        String    @id @default(cuid())
+  slug      String    @unique
+  name      String
+  active    Boolean   @default(true)
+  sortOrder Int       @default(0)
+  services  Service[]
+}
+
+model Service {
+  id                String        @id @default(cuid())
+  gameId            String
+  game              Game          @relation(fields: [gameId], references: [id])
+  slug              String        @unique
+  kind              ServiceKind
+  name              String
+  tagline           String
+  description       String
+  rules             String // service rules shown to customers and providers
+  // Account-operated services (provider plays on the customer's account) must stay
+  // disabled until publisher + payment-provider compliance review is recorded.
+  accountOperated   Boolean       @default(false)
+  complianceReviewedAt DateTime?
+  complianceNote    String?
+  enabled           Boolean       @default(false)
+  floorPriceCents   Int // absolute minimum for any order of this service
+  sortOrder         Int           @default(0)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  pricingRules PricingRule[]
+  orders       Order[]
+}
+
+enum PricingUnit {
+  DIVISION // per rank division gained
+  GAME // per game played (duo)
+  HOUR // per coaching hour
+}
+
+// A pricing rule contributes to the minimum price of an order.
+// tier: rank tier the rule applies to (null = any tier).
+// variant: service-specific variant, e.g. coaching type (null = any variant).
+model PricingRule {
+  id          String      @id @default(cuid())
+  serviceId   String
+  service     Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  unit        PricingUnit
+  tier        String?
+  variant     String?
+  amountCents Int
+  active      Boolean     @default(true)
+  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime    @default(now())
+
+  @@index([serviceId, unit])
+}
+
+model PlatformSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+// ───────────────────────────── Orders & offers ─────────────────────────────
+
+enum OrderStatus {
+  DRAFT
+  OPEN_FOR_OFFERS
+  OFFERS_RECEIVED
+  AWAITING_PAYMENT
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETION_SUBMITTED
+  AWAITING_CUSTOMER_CONFIRMATION
+  COMPLETED
+  CANCELLATION_REQUESTED
+  CANCELLED
+  DISPUTED
+  REFUNDED
+}
+
+model Order {
+  id               String      @id @default(cuid())
+  number           Int         @unique @default(autoincrement())
+  customerId       String
+  customer         User        @relation("CustomerOrders", fields: [customerId], references: [id])
+  providerId       String?
+  provider         User?       @relation("ProviderOrders", fields: [providerId], references: [id])
+  serviceId        String
+  service          Service     @relation(fields: [serviceId], references: [id])
+  status           OrderStatus @default(DRAFT)
+  // Status before a cancellation request / dispute, so it can be restored.
+  previousStatus   OrderStatus?
+  // Optimistic-concurrency counter; every transition increments it.
+  version          Int         @default(0)
+
+  title            String
+  region           String
+  details          Json // service-specific requirements (ranks, schedule, coaching type...)
+  notes            String      @default("")
+  deadline         DateTime?
+  budgetCents      Int?
+
+  // Snapshot of the minimum price at creation time.
+  minPriceCents    Int
+  pricingSnapshot  Json
+
+  // Set on offer acceptance; immutable afterwards.
+  acceptedOfferId  String?     @unique
+  agreedPriceCents Int?
+  commissionBps    Int?
+  platformFeeCents Int?
+  providerNetCents Int?
+
+  publishedAt      DateTime?
+  assignedAt       DateTime?
+  startedAt        DateTime?
+  completionSubmittedAt DateTime?
+  completedAt      DateTime?
+  cancelledAt      DateTime?
+  completionNote   String?
+  cancelReason     String?
+  cancelRequestedById String?
+
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  offers        Offer[]       @relation("OrderOffers")
+  acceptedOffer Offer?        @relation("AcceptedOffer", fields: [acceptedOfferId], references: [id])
+  events        OrderEvent[]
+  conversation  Conversation?
+  payments      Payment[]
+  review        Review?
+  disputes      Dispute[]
+  ledgerEntries LedgerEntry[]
+  supportTickets SupportTicket[]
+
+  @@index([status])
+  @@index([customerId])
+  @@index([providerId])
+}
+
+model OrderEvent {
+  id        String       @id @default(cuid())
+  orderId   String
+  order     Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  actorId   String?
+  fromStatus OrderStatus?
+  toStatus  OrderStatus?
+  type      String
+  message   String
+  createdAt DateTime     @default(now())
+
+  @@index([orderId])
+}
+
+enum OfferStatus {
+  ACTIVE
+  WITHDRAWN
+  ACCEPTED
+  DECLINED // closed because another offer was accepted or the order closed
+}
+
+model Offer {
+  id             String      @id @default(cuid())
+  orderId        String
+  order          Order       @relation("OrderOffers", fields: [orderId], references: [id], onDelete: Cascade)
+  providerId     String
+  provider       User        @relation(fields: [providerId], references: [id])
+  priceCents     Int
+  // Minimum in force when the offer was made (copied from the order snapshot).
+  minPriceCents  Int
+  etaHours       Int
+  message        String
+  status         OfferStatus @default(ACTIVE)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  acceptedFor Order? @relation("AcceptedOffer")
+
+  @@unique([orderId, providerId])
+  @@index([providerId])
+}
+
+// ───────────────────────────── Messaging ─────────────────────────────
+
+model Conversation {
+  id        String             @id @default(cuid())
+  orderId   String             @unique
+  order     Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt DateTime           @default(now())
+  messages  Message[]
+  reads     ConversationRead[]
+}
+
+model ConversationRead {
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt     DateTime
+
+  @@id([conversationId, userId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id])
+  body           String
+  isSystem       Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  attachments    Attachment[]
+
+  @@index([conversationId, createdAt])
+}
+
+model Attachment {
+  id          String   @id @default(cuid())
+  messageId   String
+  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  fileName    String
+  mimeType    String
+  sizeBytes   Int
+  storageKey  String   @unique
+  createdAt   DateTime @default(now())
+}
+
+// ───────────────────────────── Reviews ─────────────────────────────
+
+enum ReviewStatus {
+  PUBLISHED
+  FLAGGED // under investigation, hidden from public
+  REMOVED
+}
+
+model Review {
+  id               String       @id @default(cuid())
+  // One review per order, which also prevents duplicates.
+  orderId          String       @unique
+  order            Order        @relation(fields: [orderId], references: [id])
+  authorId         String
+  author           User         @relation("ReviewAuthor", fields: [authorId], references: [id])
+  providerId       String
+  provider         User         @relation("ReviewProvider", fields: [providerId], references: [id])
+  rating           Int
+  body             String
+  providerResponse String?
+  respondedAt      DateTime?
+  status           ReviewStatus @default(PUBLISHED)
+  moderationNote   String?
+  createdAt        DateTime     @default(now())
+
+  @@index([providerId, status])
+}
+
+// ───────────────────────────── Money ─────────────────────────────
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String
+  order             Order         @relation(fields: [orderId], references: [id])
+  provider          String // "stripe" | "sandbox"
+  externalId        String?       @unique // checkout session id
+  paymentIntentId   String?
+  amountCents       Int
+  currency          String        @default("usd")
+  status            PaymentStatus @default(PENDING)
+  refundedCents     Int           @default(0)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  refunds           Refund[]
+
+  @@index([orderId])
+}
+
+model Refund {
+  id          String   @id @default(cuid())
+  paymentId   String
+  payment     Payment  @relation(fields: [paymentId], references: [id])
+  externalId  String?  @unique
+  amountCents Int
+  reason      String
+  status      String   @default("succeeded")
+  createdAt   DateTime @default(now())
+}
+
+// Processed webhook events, keyed by the provider's event id for idempotency.
+model PaymentEvent {
+  id          String   @id // provider event id
+  provider    String
+  type        String
+  payload     Json
+  processedAt DateTime @default(now())
+}
+
+enum LedgerType {
+  CUSTOMER_CHARGE // money in from customer
+  PLATFORM_FEE // commission retained by platform
+  PROVIDER_EARNING // provider's net share for an order
+  REFUND // money returned to customer
+  EARNING_REVERSAL // provider earning cancelled (refund / dispute lost)
+  PAYOUT // money sent to provider
+  ADJUSTMENT // manual admin adjustment
+}
+
+enum LedgerStatus {
+  PENDING // order not yet confirmed
+  HELD // frozen (dispute)
+  AVAILABLE // eligible for payout
+  PAID // included in a payout
+  SETTLED // terminal for non-earning entries
+  REVERSED
+}
+
+model LedgerEntry {
+  id          String       @id @default(cuid())
+  userId      String?
+  user        User?        @relation(fields: [userId], references: [id])
+  orderId     String?
+  order       Order?       @relation(fields: [orderId], references: [id])
+  payoutId    String?
+  payout      Payout?      @relation(fields: [payoutId], references: [id])
+  type        LedgerType
+  status      LedgerStatus
+  amountCents Int
+  description String
+  availableAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([userId, type, status])
+  @@index([orderId])
+}
+
+enum PayoutStatus {
+  REQUESTED
+  PROCESSING
+  PAID
+  FAILED
+}
+
+model Payout {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  amountCents Int
+  status      PayoutStatus  @default(REQUESTED)
+  provider    String // "stripe" | "sandbox"
+  externalId  String?       @unique
+  failureReason String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  entries     LedgerEntry[]
+}
+
+// ───────────────────────────── Disputes & support ─────────────────────────────
+
+enum DisputeStatus {
+  OPEN
+  RESOLVED_REFUND
+  RESOLVED_RELEASE
+}
+
+model Dispute {
+  id         String        @id @default(cuid())
+  orderId    String
+  order      Order         @relation(fields: [orderId], references: [id])
+  openedById String
+  openedBy   User          @relation("DisputeOpener", fields: [openedById], references: [id])
+  reason     String
+  status     DisputeStatus @default(OPEN)
+  resolution String?
+  resolvedById String?
+  resolvedAt DateTime?
+  createdAt  DateTime      @default(now())
+
+  @@index([status])
+}
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  orderId   String?
+  order     Order?   @relation(fields: [orderId], references: [id])
+  subject   String
+  body      String
+  status    String   @default("OPEN")
+  createdAt DateTime @default(now())
+}
+
+// ───────────────────────────── Notifications & audit ─────────────────────────────
+
+enum NotificationType {
+  ORDER_UPDATE
+  NEW_OFFER
+  NEW_MESSAGE
+  PAYMENT
+  CANCELLATION
+  COMPLETION
+  DISPUTE
+  REVIEW
+  PAYOUT
+  APPLICATION
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  link      String
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  data       Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
