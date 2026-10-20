@@ -65,6 +65,8 @@ Admins configure rules per service (`/admin/pricing`): per-division rates by ran
 
 ## Payments
 
+The site keeps a **5–10% commission** on each order on a sliding scale: 10% under $50, 8% from $50 to $149.99, and 5% from $150 up (editable in Admin → Commission & fees). The rate is locked onto the order when the customer accepts an offer. The provider's share becomes withdrawable once the customer confirms completion, and providers withdraw from **Dashboard → Payouts**.
+
 `PAYMENTS_PROVIDER=sandbox` (default) is for local development only: no money moves, everything is labelled "sandbox", and the app refuses to use it when `NODE_ENV=production`.
 
 For real payments set `PAYMENTS_PROVIDER=stripe`, `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`, and point a Stripe webhook at `/api/webhooks/stripe` with these events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, `account.updated`.

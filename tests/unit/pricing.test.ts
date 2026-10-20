@@ -62,3 +62,13 @@ describe("splitCommission", () => {
     expect(s.platformFeeCents + s.providerNetCents).toBe(3333);
   });
 });
+
+describe("commission tiers", async () => {
+  const { tierKeyFor } = await import("@/lib/settings");
+  it("charges a smaller cut on bigger orders", () => {
+    expect(tierKeyFor(4999)).toBe("commissionSmallBps");
+    expect(tierKeyFor(5000)).toBe("commissionMediumBps");
+    expect(tierKeyFor(14999)).toBe("commissionMediumBps");
+    expect(tierKeyFor(15000)).toBe("commissionLargeBps");
+  });
+});

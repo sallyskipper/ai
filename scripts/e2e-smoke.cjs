@@ -94,10 +94,10 @@ const step = (s) => console.log("✓", s);
 
   // Provider earnings & payout
   await prov.goto(B + "/dashboard/payouts");
-  await prov.click("button:has-text('Withdraw $59.50')");
+  await prov.click("button:has-text('Withdraw $64.40')");
   await prov.click("dialog[open] button:has-text('Withdraw')");
   await prov.waitForSelector("[role=status]:has-text('Payout sent')");
-  step("provider payout of $59.50 ($70 - 15%)");
+  step("provider payout of $64.40 ($70 - 8%)");
   await prov.goto(B + "/dashboard");
   await prov.screenshot({ path: SHOT("4-provider-overview"), fullPage: true });
   await cust.goto(B + "/dashboard/notifications");

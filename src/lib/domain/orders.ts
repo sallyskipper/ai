@@ -3,7 +3,7 @@ import { db, type Tx } from "@/lib/db";
 import { UserError } from "@/lib/errors";
 import { audit } from "@/lib/audit";
 import { notify, notifyAdmins } from "@/lib/notify";
-import { getIntSetting } from "@/lib/settings";
+import { getCommissionBps, getIntSetting } from "@/lib/settings";
 import { formatCents } from "@/lib/money";
 import { coachingName } from "@/lib/valorant";
 import { baseOrderSchema, detailsSchemaFor } from "./order-details";
@@ -210,7 +210,7 @@ export async function acceptOffer(user: ActorRef, offerId: string) {
     const provider = await tx.providerProfile.findUnique({ where: { userId: offer.providerId } });
     if (provider?.status !== "APPROVED") throw new UserError("This provider is not currently available");
 
-    const commissionBps = await getIntSetting(tx, "commissionBps");
+    const commissionBps = await getCommissionBps(tx, offer.priceCents);
     const split = splitCommission(offer.priceCents, commissionBps);
     await transition(tx, order, "ACCEPT_OFFER", "CUSTOMER", user.id, `Offer accepted at ${formatCents(offer.priceCents)}`, {
       providerId: offer.providerId,

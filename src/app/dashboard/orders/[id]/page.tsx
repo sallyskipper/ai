@@ -8,6 +8,7 @@ import { getOrderForViewer } from "@/lib/domain/orders";
 import { markConversationRead } from "@/lib/domain/messages";
 import { STATUS_LABELS } from "@/lib/domain/order-machine";
 import { coachingName } from "@/lib/valorant";
+import { getCommissionTiers } from "@/lib/settings";
 import * as A from "@/actions/orders";
 import { ActionForm, ConfirmAction, SubmitButton } from "@/components/forms";
 import { MessageThread } from "@/components/message-thread";
@@ -194,7 +195,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                   </div>
                 </Card>
               )}
-              {isBidder && <BidPanel order={order} myOffer={myOffer} />}
+              {isBidder && <BidPanel order={order} myOffer={myOffer} tiers={await getCommissionTiers(db)} />}
             </div>
           )}
 
@@ -407,7 +408,7 @@ function ReviewForm({ orderId }: { orderId: string }) {
   );
 }
 
-function BidPanel({ order, myOffer }: { order: FullOrder; myOffer: { id: string; priceCents: number; etaHours: number; message: string; status: string } | null }) {
+function BidPanel({ order, myOffer, tiers }: { order: FullOrder; myOffer: { id: string; priceCents: number; etaHours: number; message: string; status: string } | null; tiers: { label: string; bps: number }[] }) {
   const open = ["OPEN_FOR_OFFERS", "OFFERS_RECEIVED"].includes(order.status);
   if (!open && !myOffer) return null;
   return (
@@ -419,7 +420,7 @@ function BidPanel({ order, myOffer }: { order: FullOrder; myOffer: { id: string;
           <div>
             <label className="label" htmlFor="price">Your price (USD)</label>
             <input id="price" name="price" inputMode="decimal" required defaultValue={myOffer ? (myOffer.priceCents / 100).toFixed(2) : (order.minPriceCents / 100).toFixed(2)} className="input" />
-            <p className="mt-1 text-xs text-faint">At least {formatCents(order.minPriceCents)}</p>
+            <p className="mt-1 text-xs text-faint">At least {formatCents(order.minPriceCents)}. Redline fee: {tiers.map((t) => `${t.bps / 100}% ${t.label.toLowerCase()}`).join(", ")}. You receive the rest after the customer confirms.</p>
           </div>
           <div>
             <label className="label" htmlFor="etaValue">Estimated completion</label>

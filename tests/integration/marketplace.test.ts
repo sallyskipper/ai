@@ -93,8 +93,8 @@ describe("offer acceptance and payment", () => {
     let fresh = await db.order.findUniqueOrThrow({ where: { id: order.id } });
     expect(fresh.status).toBe("AWAITING_PAYMENT");
     expect(fresh.agreedPriceCents).toBe(8000);
-    expect(fresh.platformFeeCents).toBe(1200);
-    expect(fresh.providerNetCents).toBe(6800);
+    expect(fresh.platformFeeCents).toBe(640); // $80 order → 8%
+    expect(fresh.providerNetCents).toBe(7360);
     expect((await db.offer.findUniqueOrThrow({ where: { id: o2.id } })).status).toBe("DECLINED");
     await expect(acceptOffer(customer, o2.id)).rejects.toThrow();
     await expect(startOrder(p1, order.id)).rejects.toThrow(); // cannot start before payment
@@ -163,14 +163,14 @@ describe("full lifecycle", () => {
     await confirmCompletion(customer, order.id);
 
     const bal = await providerBalances(provider.id);
-    expect(bal.available).toBe(5100); // $60 agreed − 15%
+    expect(bal.available).toBe(5520); // $60 agreed − 8%
     expect(bal.pending).toBe(0);
 
     await createReview(customer, order.id, 5, "Great coach, very clear.");
     await expect(createReview(customer, order.id, 4, "Trying to review twice")).rejects.toThrow(/already/);
 
     const payout = await requestPayout(provider);
-    expect(payout.amountCents).toBe(5100);
+    expect(payout.amountCents).toBe(5520);
     expect((await providerBalances(provider.id)).available).toBe(0);
     await expect(requestPayout(provider)).rejects.toThrow(/no available/);
   });
@@ -205,11 +205,11 @@ describe("cancellations and disputes", () => {
     await startOrder(provider, order.id);
     await submitCompletion(provider, order.id, "All sessions delivered as agreed.");
     await openDispute(customer, order.id, "Second session never happened.");
-    expect((await providerBalances(provider.id)).held).toBe(5100);
+    expect((await providerBalances(provider.id)).held).toBe(5520);
     await expect(requestPayout(provider)).rejects.toThrow();
     await expect(resolveDisputeRelease(customer, order.id, "nope")).rejects.toThrow(/Admins/);
     await resolveDisputeRelease(admin, order.id, "Session logs confirm delivery.");
-    expect((await providerBalances(provider.id)).available).toBe(5100);
+    expect((await providerBalances(provider.id)).available).toBe(5520);
   });
 
   it("admin can refund a dispute", async () => {

@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { UserError } from "@/lib/errors";
 import { audit } from "@/lib/audit";
 import { parseDollars } from "@/lib/money";
-import { SETTING_DEFAULTS, type SettingKey } from "@/lib/settings";
+import { COMMISSION_MAX_BPS, COMMISSION_MIN_BPS, COMMISSION_TIERS, SETTING_DEFAULTS, type SettingKey } from "@/lib/settings";
 import { TIERS } from "@/lib/valorant";
 import { reviewApplication, setProviderStatus } from "@/lib/domain/providers";
 import { moderateReview } from "@/lib/domain/reviews";
@@ -147,9 +147,12 @@ export async function updateSettingsAction(fd: FormData) {
   const a = await admin();
   return run(async () => {
     const values: Partial<Record<SettingKey, string>> = {};
-    const bps = Math.round(Number(str(fd, "commissionPct")) * 100);
-    if (!Number.isFinite(bps) || bps < 0 || bps > 5000) throw new UserError("Commission must be between 0% and 50%");
-    values.commissionBps = String(bps);
+    for (const tier of COMMISSION_TIERS) {
+      const bps = Math.round(Number(str(fd, tier.key)) * 100);
+      if (!Number.isFinite(bps) || bps < COMMISSION_MIN_BPS || bps > COMMISSION_MAX_BPS)
+        throw new UserError(`Commission for ${tier.label} must be between 5% and 10%`);
+      values[tier.key] = String(bps);
+    }
     const hold = Number(str(fd, "payoutHoldHours"));
     if (!Number.isInteger(hold) || hold < 0 || hold > 24 * 30) throw new UserError("Hold must be 0–720 hours");
     values.payoutHoldHours = String(hold);
