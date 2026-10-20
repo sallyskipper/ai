@@ -20,3 +20,6 @@ export const RANK_LADDER_CENTS: Record<string, number> = Object.fromEntries(
 
 // Smallest rank-up order: one Iron division.
 export const RANK_UP_FLOOR_CENTS = 600;
+
+// Duo Rank Up minimums are double the solo ladder (e.g. Ascendant 1 → Immortal 1 = 3 × $50 = $150).
+export const DUO_MULTIPLIER = 2;

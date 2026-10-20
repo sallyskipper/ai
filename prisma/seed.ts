@@ -2,7 +2,7 @@
 // production and are clearly named as demo accounts; no reviews or ratings are seeded.
 import { PrismaClient, type PricingUnit } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { RANK_LADDER_CENTS, RANK_UP_FLOOR_CENTS } from "../src/lib/rank-ladder";
+import { DUO_MULTIPLIER, RANK_LADDER_CENTS, RANK_UP_FLOOR_CENTS } from "../src/lib/rank-ladder";
 
 const db = new PrismaClient();
 
@@ -42,7 +42,7 @@ async function main() {
         "You play on your own account at all times. Providers never request or receive account credentials. Party rank restrictions set by the game apply.",
       accountOperated: false,
       enabled: true,
-      floorPriceCents: RANK_UP_FLOOR_CENTS,
+      floorPriceCents: RANK_UP_FLOOR_CENTS * DUO_MULTIPLIER,
       sortOrder: 1,
     },
     {
@@ -71,7 +71,8 @@ async function main() {
     const rules: { unit: PricingUnit; tier: string | null; variant: string | null; amountCents: number }[] = [];
     // Rank-up services get one rule per division step (the per-rank ladder).
     if (s.kind === "SOLO_RANK_UP" || s.kind === "DUO_RANK_UP")
-      for (const [rank, c] of Object.entries(RANK_LADDER_CENTS)) rules.push({ unit: "DIVISION", tier: rank, variant: null, amountCents: c });
+      for (const [rank, c] of Object.entries(RANK_LADDER_CENTS))
+        rules.push({ unit: "DIVISION", tier: rank, variant: null, amountCents: s.kind === "DUO_RANK_UP" ? c * DUO_MULTIPLIER : c });
     if (s.kind === "DUO_RANK_UP") {
       for (const [tier, c] of Object.entries(DUO_GAME)) rules.push({ unit: "GAME", tier, variant: null, amountCents: c });
     }

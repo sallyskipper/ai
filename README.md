@@ -61,7 +61,7 @@ prisma/                Schema, migrations, seed
 
 ### Minimum prices
 
-Admins configure rules per service (`/admin/pricing`): per-division rates by rank tier (Solo/Duo), per-game rates (Duo), and hourly rates by coaching type, plus a per-service floor. Rank-up services are priced per division, with a flat price for each division in a tier, and prices stack as you climb (`src/lib/rank-ladder.ts`): Iron $6, Bronze $8, Silver $10, Gold $13, Platinum $16, Diamond $20, Ascendant $25 and Immortal $70 per division. For example, Ascendant 1 → Immortal 1 is 3 × $25 = $75. Every step can be adjusted in admin. The minimum is shown live while creating an order, recomputed and **stored on the order** at creation (`minPriceCents` + `pricingSnapshot`), and enforced on the server for every offer.
+Admins configure rules per service (`/admin/pricing`): per-division rates by rank tier (Solo/Duo), per-game rates (Duo), and hourly rates by coaching type, plus a per-service floor. Rank-up services are priced per division, with a flat price for each division in a tier, and prices stack as you climb (`src/lib/rank-ladder.ts`): Iron $6, Bronze $8, Silver $10, Gold $13, Platinum $16, Diamond $20, Ascendant $25 and Immortal $70 per division. For example, Ascendant 1 → Immortal 1 is 3 × $25 = $75. Duo Rank Up minimums are double: $12 for Iron up to $140 for Immortal per division, so Ascendant 1 → Immortal 1 on Duo is $150. Every step can be adjusted in admin. The minimum is shown live while creating an order, recomputed and **stored on the order** at creation (`minPriceCents` + `pricingSnapshot`), and enforced on the server for every offer.
 
 ## Payments
 

@@ -118,3 +118,12 @@ describe("default rank ladder", async () => {
     expect(price("Ascendant 3", "Immortal 2")).toBe(2500 + 7000);
   });
 });
+
+describe("duo ladder", async () => {
+  const { RANK_LADDER_CENTS, DUO_MULTIPLIER } = await import("@/lib/rank-ladder");
+  const rules: Rule[] = Object.entries(RANK_LADDER_CENTS).map(([rank, c]) => ({ id: rank, unit: "DIVISION", tier: rank, variant: null, amountCents: c * DUO_MULTIPLIER }));
+  it("doubles solo minimums: Ascendant 1 → Immortal 1 is $150", () => {
+    const r = computeMinPrice("DUO_RANK_UP", { currentRank: "Ascendant 1", mode: "TARGET_RANK", targetRank: "Immortal 1", server: "-", schedule: "-", communication: ["Discord voice"] }, rules, 1200);
+    expect(r.minPriceCents).toBe(15000);
+  });
+});
